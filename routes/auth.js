@@ -18,8 +18,7 @@ router.get('/users', async (req, res) => {
     res.json(users)
 })
 
-router.post('/user', async (req, res) => {
-
+router.post('/signup', async (req, res) => {
 
     const invalidEmail = await User.findOne({email: req.body.email})
     if (invalidEmail) return res.status(400).send({error: "Email already in use"})
@@ -37,6 +36,17 @@ router.post('/user', async (req, res) => {
     if (!savedUser) return res.status(400).send({error: "Error: User not saved"})
 
     res.send({name: savedUser.name, email: savedUser.email, _id: savedUser._id})
+})
+
+router.post('/login', async (req, res) => {
+    
+    const user = await User.findOne({email: req.body.email})
+    if (!user) return res.status(404).send({error: "Email/Password Invalid"})
+
+    const validPassword = await bcrypt.compareSync(req.body.password, user.password)
+    if (!validPassword) return res.status(404).send({error: "Email/Password Invalid"})
+
+    res.send({name: user.name, email: user.email, friends: user.friends, _id: user._id})
 })
 
 router.post('/user/:id/message', async (req, res) => {
