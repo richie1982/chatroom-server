@@ -10,7 +10,15 @@ router.get('/user/:id', async (req, res) => {
     const user = await User.findById(req.params.id)
     if (!user) return res.status(404).send({error: "User not found"})
 
-    res.send({name: user.name, email: user.email, _id: user._id})
+    const userObj = {
+        _id: user._id, 
+        name: user.name, 
+        email: user.email, 
+        friends: user.friends,
+        messages: user.messages
+    }
+
+    res.send(userObj)
 })
 
 router.get('/users', async (req, res) => {
@@ -39,9 +47,17 @@ router.post('/signup', async (req, res) => {
     const savedUser = await user.save()
     if (!savedUser) return res.status(400).send({error: "Error: User not saved"})
 
-    const token = await jwt.sign(user._id, process.env.TOKEN_SECRET)
+    const token = await jwt.sign({_id: user._id}, process.env.TOKEN_SECRET)
+    if (!token) return res.status(400).send({error: "No token"})
 
-    res.header('auth', token).json(savedUser)
+    const userObj = {
+        _id: savedUser._id, 
+        name: savedUser.name, 
+        email: savedUser.email, 
+        token: token,
+    }
+
+    res.send(userObj)
 })
 
 router.post('/login', async (req, res) => {
@@ -52,19 +68,39 @@ router.post('/login', async (req, res) => {
     const validPassword = await bcrypt.compareSync(req.body.password, user.password)
     if (!validPassword) return res.status(404).send({error: "Email/Password Invalid"})
 
-    const token = jwt.sign(user._id, process.env.TOKEN_SECRET)
+    const token = await jwt.sign({_id: user._id}, process.env.TOKEN_SECRET)
+    if (!token) return res.status(400).send({error: "No token"})
 
-    res.header('auth', token).json(user)
+    const userObj = {
+        _id: user._id, 
+        name: user.name, 
+        email: user.email, 
+        friends: user.friends,
+        messages: user.messages,
+        token: token
+    }
+
+    res.send(userObj)
 })
 
-router.post('/validate', async (req, res) => {
-    const id = jwt.decode(req.header.auth)
+router.get('/validate', async (req, res) => {
+    const id = jwt.decode(req.headers.auth)
     const user = await User.findById(id)
     if (!user) return res.status(404).send({error: "User not found"})
 
-    const token = jwt.sign(user._id, process.env.TOKEN_SECRET)
-    res.header('auth', token).json(user)
+    const token = await jwt.sign({_id: user._id}, process.env.TOKEN_SECRET)
+    if (!token) return res.status(400).send({error: "No token"})
 
+    const userObj = {
+        _id: user._id, 
+        name: user.name, 
+        email: user.email, 
+        friends: user.friends,
+        messages: user.messages,
+        token: token
+    }
+
+    res.send(userObj)
 })
 
 // USER MESSAGES
