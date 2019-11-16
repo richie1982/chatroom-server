@@ -4,6 +4,8 @@ const mongoose = require('mongoose')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 
+// GET USERS
+
 router.get('/user/:id', async (req, res) => {
     const user = await User.findById(req.params.id)
     if (!user) return res.status(404).send({error: "User not found"})
@@ -17,6 +19,8 @@ router.get('/users', async (req, res) => {
 
     res.json(users)
 })
+
+// SIGNUP, LOGIN, VALIDATE
 
 router.post('/signup', async (req, res) => {
 
@@ -35,7 +39,9 @@ router.post('/signup', async (req, res) => {
     const savedUser = await user.save()
     if (!savedUser) return res.status(400).send({error: "Error: User not saved"})
 
-    res.send({name: savedUser.name, email: savedUser.email, _id: savedUser._id})
+    const token = await jwt.sign(user._id, process.env.TOKEN_SECRET)
+
+    res.header('auth', token).json(savedUser)
 })
 
 router.post('/login', async (req, res) => {
@@ -46,8 +52,22 @@ router.post('/login', async (req, res) => {
     const validPassword = await bcrypt.compareSync(req.body.password, user.password)
     if (!validPassword) return res.status(404).send({error: "Email/Password Invalid"})
 
-    res.send({name: user.name, email: user.email, friends: user.friends, _id: user._id})
+    const token = jwt.sign(user._id, process.env.TOKEN_SECRET)
+
+    res.header('auth', token).json(user)
 })
+
+router.post('/validate', async (req, res) => {
+    const id = jwt.decode(req.header.auth)
+    const user = await User.findById(id)
+    if (!user) return res.status(404).send({error: "User not found"})
+
+    const token = jwt.sign(user._id, process.env.TOKEN_SECRET)
+    res.header('auth', token).json(user)
+
+})
+
+// USER MESSAGES
 
 router.post('/user/:id/message', async (req, res) => {
 
