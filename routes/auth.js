@@ -154,4 +154,14 @@ router.patch('/:id/friend', async (req, res) => {
     res.json(user.friends)
 })
 
+// SEARCH 
+
+router.get('/search/:query', async (req, res) => {
+    const pattern = new RegExp(req.params.query, "i")
+    const results = await User.find({name: pattern})
+    if (!results) return res.status(400).send({error: "No Users Found"})
+
+    res.json(results)
+})
+
 module.exports = router
