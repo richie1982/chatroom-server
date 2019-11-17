@@ -142,7 +142,7 @@ router.get('/friends', async (req, res) => {
     res.json(user.friends)
 })
 
-router.patch('/:id/friend', async (req, res) => {
+router.patch('/friend', async (req, res) => {
     const id = jwt.decode(req.headers.auth)
     const user = await User.findById(id).populate('friends', 'name email')
     if (!user) return res.status(404).send({error: "No user found"})
@@ -151,7 +151,10 @@ router.patch('/:id/friend', async (req, res) => {
     const savedUser = await user.save()
     if (!savedUser) return res.status(400).send({error: "Friend not saved"})
 
-    res.json(user.friends)
+    const friend = await User.findById(req.body.friendId)
+    if (!friend) return res.status(400).send({error: "Contact not found"})
+
+    res.json(friend)
 })
 
 // SEARCH 
