@@ -132,4 +132,26 @@ router.get('/user/:id/messages', async (req, res) => {
 
 })
 
+// USER FRIENDS
+
+router.get('/friends', async (req, res) => {
+    const id = jwt.decode(req.headers.auth)
+    const user = await User.findById(id).populate('friends', 'name email')
+    if (!user) return res.status(404).send({error: "No User"})
+
+    res.json(user.friends)
+})
+
+router.patch('/:id/friend', async (req, res) => {
+    const id = jwt.decode(req.headers.auth)
+    const user = await User.findById(id).populate('friends', 'name email')
+    if (!user) return res.status(404).send({error: "No user found"})
+
+    user.friends.push(req.body.friendId)
+    const savedUser = await user.save()
+    if (!savedUser) return res.status(400).send({error: "Friend not saved"})
+
+    res.json(user.friends)
+})
+
 module.exports = router
