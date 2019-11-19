@@ -106,9 +106,12 @@ router.get('/validate', async (req, res) => {
 // USER MESSAGES
 
 router.post('/user/:id/message', async (req, res) => {
+    const id = jwt.decode(req.headers.auth)
+    const user = await User.findById(id)
+    if (!user) return res.status(404).send({error: "No User Found"})
 
     const message = new Message({
-        user: req.params.id,
+        user: user._id,
         text: req.body.text
     })
 
@@ -121,7 +124,7 @@ router.post('/user/:id/message', async (req, res) => {
     res.json(savedMessage)
 })
 
-router.get('/user/:id/messages', async (req, res) => {
+router.get('/:id/messages', async (req, res) => {
     const user = await User.findById(req.params.id)
     if (!user) return res.status(404).send({error: "No User"})
 
