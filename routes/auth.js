@@ -105,19 +105,24 @@ router.get('/validate', async (req, res) => {
 
 // USER MESSAGES
 
-router.post('/user/:id/message', async (req, res) => {
+router.post('/:id/message', async (req, res) => {
     const id = jwt.decode(req.headers.auth)
     const user = await User.findById(id)
     if (!user) return res.status(404).send({error: "No User Found"})
 
     const message = new Message({
-        user: user._id,
-        text: req.body.text
+        users: [ 
+            user._id, 
+            req.body.recipId 
+        ],
+        messages: [ 
+            {
+                author: user._id,
+                text: req.body.text 
+            }
+        ]
     })
-
-    const recip = req.body.recipId
     
-    message.recipients.push(recip)
     const savedMessage = await message.save()
     if (!savedMessage) return res.status(400).send({error: "Error: message not saved"})
     
@@ -128,11 +133,14 @@ router.get('/:id/messages', async (req, res) => {
     const user = await User.findById(req.params.id)
     if (!user) return res.status(404).send({error: "No User"})
 
-    const messages = await Message.find({user: user._id})
+    const messages = await Message.find({users: user._id })
     if (!messages) return res.send({error: "No messages"})
 
     res.json(messages)
+})
 
+router.patch('/:id/messages', async (req, res) => {
+    const message = await Message.findById(req.body.msgId)
 })
 
 // USER FRIENDS

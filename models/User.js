@@ -21,29 +21,30 @@ const userSchema = new Schema({
         {
             type: Schema.Types.ObjectID,
             ref: 'User'
-    }
-
+        }
     ]
 })
 
 const messageSchema = new Schema({
-    user: {
-        type: Schema.Types.ObjectID,
-        ref: 'User'
-    },
-    recipients: [
+    users: [
         {
             type: Schema.Types.ObjectID,
             ref: 'User'
         }
     ],
-    text: {
-        type: String
-    },
-    date: {
-        type: Date,
-        default: Date.now
-    }
+    messages: [
+        { 
+            author: {
+                type: Schema.Types.ObjectID,
+                ref: 'User'
+            },
+            text: { type: String },
+            date: {
+                type: Date,
+                default: Date.now
+            }
+        }
+    ],
 })
 
 module.exports.User = mongoose.model('User', userSchema)
