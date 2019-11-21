@@ -141,6 +141,17 @@ router.get('/:id/messages', async (req, res) => {
 
 router.patch('/:id/messages', async (req, res) => {
     const message = await Message.findById(req.body.msgId)
+    if (!message) return res.status(400).send({error: "Message not found"})
+
+    message.messages.push({ 
+        text: req.body.text,
+        author: req.body.author
+    })
+
+    const savedMessage = await message.save()
+    if (!savedMessage) return res.status(400).send({error: "Error, message did not save"})
+
+    res.json(savedMessage)
 })
 
 // USER FRIENDS
