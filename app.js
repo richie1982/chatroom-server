@@ -24,6 +24,7 @@ io.on('connection', (socket) => {
     console.log("socket connected")
     socket.on('chat-message', (data) => {
         console.log(`Chat working: ${JSON.stringify(data)}`)
+        io.emit('chat-message', data)
     })
 })
 

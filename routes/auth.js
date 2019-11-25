@@ -105,6 +105,16 @@ router.get('/validate', async (req, res) => {
 
 // USER MESSAGES
 
+router.get('/:id/messages', async (req, res) => {
+    const user = await User.findById(req.params.id)
+    if (!user) return res.status(404).send({error: "No User"})
+
+    const messages = await Message.find({users: user._id })
+    if (!messages) return res.send({error: "No messages"})
+
+    res.json(messages)
+})
+
 router.post('/:id/message', async (req, res) => {
     const id = jwt.decode(req.headers.auth)
     const user = await User.findById(id)
@@ -127,16 +137,6 @@ router.post('/:id/message', async (req, res) => {
     if (!savedMessage) return res.status(400).send({error: "Error: message not saved"})
     
     res.json(savedMessage)
-})
-
-router.get('/:id/messages', async (req, res) => {
-    const user = await User.findById(req.params.id)
-    if (!user) return res.status(404).send({error: "No User"})
-
-    const messages = await Message.find({users: user._id })
-    if (!messages) return res.send({error: "No messages"})
-
-    res.json(messages)
 })
 
 router.patch('/:id/messages', async (req, res) => {
