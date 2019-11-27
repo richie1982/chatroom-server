@@ -7,7 +7,7 @@ const jwt = require('jsonwebtoken')
 // GET USERS
 
 router.get('/user/:id', async (req, res) => {
-    const user = await User.findById(req.params.id)
+    const user = await User.findById(req.params.id).populate({path: 'invites', select: 'name _id'})
     if (!user) return res.status(404).send({error: "User not found"})
 
     const userObj = {
@@ -15,7 +15,9 @@ router.get('/user/:id', async (req, res) => {
         name: user.name, 
         email: user.email, 
         friends: user.friends,
-        messages: user.messages
+        messages: user.messages,
+        invites: user.invites,
+        pending: user.pending,
     }
 
     res.send(userObj)
@@ -51,9 +53,13 @@ router.post('/signup', async (req, res) => {
     if (!token) return res.status(400).send({error: "No token"})
 
     const userObj = {
-        _id: savedUser._id, 
-        name: savedUser.name, 
-        email: savedUser.email, 
+        _id: user._id, 
+        name: user.name, 
+        email: user.email, 
+        friends: user.friends,
+        messages: user.messages,
+        invites: user.invites,
+        pending: user.pending,
         token: token,
     }
 
@@ -62,7 +68,7 @@ router.post('/signup', async (req, res) => {
 
 router.post('/login', async (req, res) => {
     
-    const user = await User.findOne({email: req.body.email})
+    const user = await User.findOne({email: req.body.email}).populate({path: 'invites', select: 'name _id'})
     if (!user) return res.status(404).send({error: "Email/Password Invalid"})
 
     const validPassword = await bcrypt.compareSync(req.body.password, user.password)
@@ -77,6 +83,8 @@ router.post('/login', async (req, res) => {
         email: user.email, 
         friends: user.friends,
         messages: user.messages,
+        invites: user.invites,
+        pending: user.pending,
         token: token
     }
 
@@ -85,7 +93,7 @@ router.post('/login', async (req, res) => {
 
 router.get('/validate', async (req, res) => {
     const id = jwt.decode(req.headers.auth)
-    const user = await User.findById(id)
+    const user = await User.findById(id).populate({path: 'invites', select: 'name _id'})
     if (!user) return res.status(404).send({error: "User not found"})
 
     const token = await jwt.sign({_id: user._id}, process.env.TOKEN_SECRET)
@@ -97,6 +105,8 @@ router.get('/validate', async (req, res) => {
         email: user.email, 
         friends: user.friends,
         messages: user.messages,
+        invites: user.invites,
+        pending: user.pending,
         token: token
     }
 
@@ -113,6 +123,12 @@ router.get('/:id/messages', async (req, res) => {
     if (!messages) return res.send({error: "No messages"})
 
     res.json(messages)
+})
+
+router.get('/:id/chats', async (req, res) => {
+    const user = await User.findById(req.params.id).populate({path: 'messages'},)
+    if (!user) return res.status(400).send({error: "not found"})
+
 })
 
 router.post('/:id/message', async (req, res) => {
@@ -158,10 +174,30 @@ router.patch('/:id/messages', async (req, res) => {
 
 router.get('/friends', async (req, res) => {
     const id = jwt.decode(req.headers.auth)
-    const user = await User.findById(id).populate('friends', 'name email')
+    const user = await User.findById(id).populate('friends', 'name email _id')
     if (!user) return res.status(404).send({error: "No User"})
 
     res.json(user.friends)
+})
+
+router.patch('/invite', async (req, res) => {
+    const id = jwt.decode(req.headers.auth)
+    const user = await User.findById(id)
+    if (!user) return res.status(404).send({error: "No user found"})
+
+    const friend = await User.findById(req.body.friendId)
+    if (!friend) return res.status(400).send({error: "No user found"})
+
+    user.pending.push(req.body.friendId)
+    friend.invites.push(user._id)
+
+    const saved = await user.save()
+    if (!saved) return res.status(400).send({error: "Friend not saved"})
+
+    const savedFriend = await friend.save()
+    if (!savedFriend) return res.status(400).send({error: "Contact not found"})
+
+    res.send({status: "Invitation sent..."})
 })
 
 router.patch('/friend', async (req, res) => {
@@ -169,14 +205,37 @@ router.patch('/friend', async (req, res) => {
     const user = await User.findById(id).populate('friends', 'name email')
     if (!user) return res.status(404).send({error: "No user found"})
 
-    user.friends.push(req.body.friendId)
+    const friend = await User.findById(req.body.friendId)
+    if (!friend) return res.status(404).send({error: "No user found"})
+
+
+    user.invites.pull(friend._id)
+    user.friends.push(friend._id)
+
+    friend.pending.pull(user._id)
+    friend.friends.push(user._id)
+
     const savedUser = await user.save()
     if (!savedUser) return res.status(400).send({error: "Friend not saved"})
 
-    const friend = await User.findById(req.body.friendId)
-    if (!friend) return res.status(400).send({error: "Contact not found"})
+    const savedFriend = await friend.save()
+    if (!savedFriend) return res.status(400).send({error: "Contact not found"})
 
-    res.json(friend)
+    const friendObj = {
+        _id: savedFriend._id,
+        name: savedFriend.name,
+        email: savedFriend.email
+    }
+ 
+    res.send(friendObj)
+})
+
+router.delete('/:id/pending', async (req, res) => {
+    const id = jwt.decode(req.headers.auth)
+    const user = await User.findById(id)
+    if (!user) res.status(400).send({error: "No user found"})
+
+    user.pending.pull(req.body.friendId)
 })
 
 // SEARCH 

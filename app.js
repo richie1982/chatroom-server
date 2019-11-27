@@ -23,7 +23,7 @@ mongoose.connect(process.env.DB_CONNECT, {
 io.on('connection', (socket) => {
     console.log("socket connected")
     socket.on('chat-message', (data) => {
-        console.log(`Chat working: ${JSON.stringify(data)}`)
+        // console.log(`Chat working: ${JSON.stringify(data)}`)
         io.emit('chat-message', data)
     })
 })

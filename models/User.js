@@ -22,6 +22,18 @@ const userSchema = new Schema({
             type: Schema.Types.ObjectID,
             ref: 'User'
         }
+    ],
+    pending: [
+        {
+            type: Schema.Types.ObjectID,
+            ref: 'User'
+        }
+    ],
+    invites: [
+        {
+            type: Schema.Types.ObjectId,
+            ref: 'User'
+        }
     ]
 })
 
