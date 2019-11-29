@@ -125,10 +125,18 @@ router.get('/:id/messages', async (req, res) => {
     res.json(messages)
 })
 
-router.get('/:id/chats', async (req, res) => {
-    const user = await User.findById(req.params.id).populate({path: 'messages'},)
+router.post('/:id/chats', async (req, res) => {
+    const id = jwt.decode(req.headers.auth)
+
+    const config = {
+        path: 'messages',
+        match: { users: req.body.friendId }
+    }
+
+    const user = await User.findById(id).populate(config)
     if (!user) return res.status(400).send({error: "not found"})
 
+    res.json(user.messages)
 })
 
 router.post('/:id/message', async (req, res) => {
@@ -156,12 +164,16 @@ router.post('/:id/message', async (req, res) => {
 })
 
 router.patch('/:id/messages', async (req, res) => {
+    const id = jwt.decode(req.headers.auth)
+    const user = await User.findById(id)
+    if (!user) return res.status(400).send({error: "No user found"})
+    
     const message = await Message.findById(req.body.msgId)
     if (!message) return res.status(400).send({error: "Message not found"})
 
     message.messages.push({ 
         text: req.body.text,
-        author: req.body.author
+        author: user._id
     })
 
     const savedMessage = await message.save()
@@ -215,27 +227,52 @@ router.patch('/friend', async (req, res) => {
     friend.pending.pull(user._id)
     friend.friends.push(user._id)
 
+    const message = new Message({
+        users: [
+            user._id,
+            friend._id
+        ]
+    })
+
+    const savedMessage = await message.save()
+    if (!savedMessage) return res.status(400).send({error: "Error: message not saved"})
+
+    user.messages.push(savedMessage._id)
+    friend.messages.push(savedMessage._id)
+    
     const savedUser = await user.save()
     if (!savedUser) return res.status(400).send({error: "Friend not saved"})
 
     const savedFriend = await friend.save()
     if (!savedFriend) return res.status(400).send({error: "Contact not found"})
 
-    const friendObj = {
-        _id: savedFriend._id,
-        name: savedFriend.name,
-        email: savedFriend.email
+    const obj = {
+        friend: {
+            _id: savedFriend._id,
+            name: savedFriend.name,
+            email: savedFriend.email
+        },
+        msgId: savedMessage._id
     }
  
-    res.send(friendObj)
+    res.send(obj)
 })
 
-router.delete('/:id/pending', async (req, res) => {
+router.delete('/pending', async (req, res) => {
     const id = jwt.decode(req.headers.auth)
     const user = await User.findById(id)
     if (!user) res.status(400).send({error: "No user found"})
 
-    user.pending.pull(req.body.friendId)
+    const friend = await User.findById(req.body.friendId)
+    if (!friend) return res.status(400).send({error: "No User found"})
+    
+    user.invites.pull(friend._id)
+    user.save()
+
+    friend.pending.pull(user._id)
+    const savedFriend = await friend.save()
+
+    res.send({_id: savedFriend._id})
 })
 
 // SEARCH 
