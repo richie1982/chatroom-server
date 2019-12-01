@@ -7,7 +7,9 @@ const jwt = require('jsonwebtoken')
 // GET USERS
 
 router.get('/user/:id', async (req, res) => {
-    const user = await User.findById(req.params.id).populate({path: 'invites', select: 'name _id'})
+    const user = await User.findById(req.params.id)
+                            .populate({path: 'invites', select: 'name _id'})
+                            .populate('friends', 'name email _id')
     if (!user) return res.status(404).send({error: "User not found"})
 
     const userObj = {
@@ -15,7 +17,7 @@ router.get('/user/:id', async (req, res) => {
         name: user.name, 
         email: user.email, 
         friends: user.friends,
-        messages: user.messages,
+        messages: [],
         invites: user.invites,
         pending: user.pending,
     }
@@ -57,7 +59,7 @@ router.post('/signup', async (req, res) => {
         name: user.name, 
         email: user.email, 
         friends: user.friends,
-        messages: user.messages,
+        messages: [],
         invites: user.invites,
         pending: user.pending,
         token: token,
@@ -68,7 +70,9 @@ router.post('/signup', async (req, res) => {
 
 router.post('/login', async (req, res) => {
     
-    const user = await User.findOne({email: req.body.email}).populate({path: 'invites', select: 'name _id'})
+    const user = await User.findOne({email: req.body.email})
+                            .populate({path: 'invites', select: 'name _id'})
+                            .populate('friends', 'name email _id')
     if (!user) return res.status(404).send({error: "Email/Password Invalid"})
 
     const validPassword = await bcrypt.compareSync(req.body.password, user.password)
@@ -82,7 +86,7 @@ router.post('/login', async (req, res) => {
         name: user.name, 
         email: user.email, 
         friends: user.friends,
-        messages: user.messages,
+        messages: [],
         invites: user.invites,
         pending: user.pending,
         token: token
@@ -93,7 +97,9 @@ router.post('/login', async (req, res) => {
 
 router.get('/validate', async (req, res) => {
     const id = jwt.decode(req.headers.auth)
-    const user = await User.findById(id).populate({path: 'invites', select: 'name _id'})
+    const user = await User.findById(id)
+                            .populate({path: 'invites', select: 'name _id'})
+                            .populate('friends', 'name email _id')
     if (!user) return res.status(404).send({error: "User not found"})
 
     const token = await jwt.sign({_id: user._id}, process.env.TOKEN_SECRET)
@@ -104,7 +110,7 @@ router.get('/validate', async (req, res) => {
         name: user.name, 
         email: user.email, 
         friends: user.friends,
-        messages: user.messages,
+        messages: [],
         invites: user.invites,
         pending: user.pending,
         token: token
@@ -125,42 +131,18 @@ router.get('/:id/messages', async (req, res) => {
     res.json(messages)
 })
 
-router.post('/:id/chats', async (req, res) => {
+router.post('/:id/messages', async (req, res) => {
     const id = jwt.decode(req.headers.auth)
 
     const config = {
         path: 'messages',
-        match: { users: req.body.friendId }
+        match: { users: req.body.friendId },
     }
 
     const user = await User.findById(id).populate(config)
     if (!user) return res.status(400).send({error: "not found"})
 
     res.json(user.messages)
-})
-
-router.post('/:id/message', async (req, res) => {
-    const id = jwt.decode(req.headers.auth)
-    const user = await User.findById(id)
-    if (!user) return res.status(404).send({error: "No User Found"})
-
-    const message = new Message({
-        users: [ 
-            user._id, 
-            req.body.recipId 
-        ],
-        messages: [ 
-            {
-                author: user._id,
-                text: req.body.text 
-            }
-        ]
-    })
-    
-    const savedMessage = await message.save()
-    if (!savedMessage) return res.status(400).send({error: "Error: message not saved"})
-    
-    res.json(savedMessage)
 })
 
 router.patch('/:id/messages', async (req, res) => {
